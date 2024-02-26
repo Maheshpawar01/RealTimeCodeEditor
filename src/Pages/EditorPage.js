@@ -1,13 +1,16 @@
 import React, { useEffect, useState, useRef } from 'react';
 import toast from 'react-hot-toast';
 import Client from '../components/Client';
-import Editor from '../components/Editor';
+import Editor from '../components/Editor'
+// import Client from '../components/Client';
+// import Editor from '../components/Editor';
 import { initSocket } from '../socket';
 import ACTIONS from '../Actions';
 import { useLocation, useNavigate, Navigate, useParams } from 'react-router-dom';
 
 const EditorPage = () => {
   const socketRef = useRef(null);
+  const codeRef = useRef(null);
   const location = useLocation();
   const reactNavigator = useNavigate();
   const { roomId } = useParams();
@@ -30,22 +33,34 @@ const EditorPage = () => {
         username: location.state?.username,
       });
 
-      socketRef.current.on(ACTIONS.JOINED, 
+      //listening for joined event
+      socketRef.current.on(
+        ACTIONS.JOINED, 
         ({ clients, username, socketId }) => {
         if (username !== location.state?.username) {
           toast.success(`${username} joined the room`);
           console.log(`${username} joined`);
         }
+
         setClients(clients);
+        socketRef.current.emit(ACTIONS.SYNC_CODE, {
+          code: codeRef.current,
+          socketId,
+        })
       });
 
          //listening for disconnected
-      socketRef.current.on(ACTIONS.DISCONNECTED, ({ socketId, username }) => {
+      socketRef.current.on(
+        ACTIONS.DISCONNECTED,
+        ({ socketId, username }) => {
         toast.success(`${username} left the room`);
         setClients((prev) => {
           return prev.filter((client) => client.socketId !== socketId);
         });
       });
+      
+      // window.location.reload();
+
     };
 
     // puting init in return beacuse outside it causing double user problem
@@ -59,6 +74,36 @@ const EditorPage = () => {
       }
     };
   }, []);
+
+
+    async function copyRoomId(){
+      try{
+        await navigator.clipboard.writeText(roomId);
+        toast.success(`Room ID has been copied to your clipboard`)
+      }catch(err){
+        toast.error('could not copy the Room ID')
+        console.log(err)
+      }
+    }
+
+    async function leaveRoom(){
+      if(socketRef.current){
+        //notify the server that the user is leaving the room
+      // socketRef.current.emit(ACTIONS.LEAVE, { roomId });
+      //disconnect from the socket
+      socketRef.current.disconnect();
+      // window.location.reload();
+
+      // Reload the page # Doing this beacuse it rejoin the room
+
+      }
+      window.location.reload();
+      reactNavigator('/')
+      window.location.reload();
+
+
+    }
+
 
   if (!location.state) {
     return <Navigate to='/' />;
@@ -78,11 +123,16 @@ const EditorPage = () => {
             ))}
           </div>
         </div>
-        <button className='btn copyBtn'>Copy Room ID</button>
-        <button className='btn leaveBtn'>Leave</button>
+        <button className='btn copyBtn' onClick={copyRoomId}>Copy Room ID</button>
+        <button className='btn leaveBtn' onClick={leaveRoom}>Leave</button>
       </div>
       <div className='editorWrap'>
-        <Editor socketRef={socketRef} roomId={roomId} />
+        <Editor 
+        socketRef={socketRef} 
+        roomId={roomId} 
+        onCodeChange={(code)=>{
+          codeRef.current = code;
+          }} />
       </div>
     </div>
   );

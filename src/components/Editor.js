@@ -7,13 +7,16 @@ import 'codemirror/addon/edit/closetag';
 import 'codemirror/addon/edit/closebrackets';
 import 'codemirror/lib/codemirror.css';
 
-const Editor = ({ socketRef, roomId }) => {
+const Editor = ({ socketRef, roomId, onCodeChange }) => {
   const editorRef = useRef(null);
 
   useEffect(() => {
     //double editor problem causing here 
     async function init(){
-    editorRef.current = Codemirror.fromTextArea(document.getElementById('realtimeEditor'), {
+      const editorElement = document.getElementById('realtimeEditor');
+      if (!editorElement) return;
+
+    editorRef.current = Codemirror.fromTextArea(editorElement, {
       mode: { name: 'javascript', json: true },
       theme: 'dracula',
       autoCloseTags: true,
@@ -24,6 +27,7 @@ const Editor = ({ socketRef, roomId }) => {
     editorRef.current.on('change', (instance, changes) => {
       const { origin } = changes;
       const code = instance.getValue();
+      onCodeChange(code)
       if (origin !== 'setValue') {
         socketRef.current.emit(ACTIONS.CODE_CHANGE, {
           roomId,
@@ -33,8 +37,8 @@ const Editor = ({ socketRef, roomId }) => {
     });
   };
     // puting init in return beacuse it gives double code editor outside the return
-      return()=>{
-        init();
+    return()=>{
+      init();
       }
   }, []);
 
@@ -46,6 +50,17 @@ const Editor = ({ socketRef, roomId }) => {
         }
       });
     }
+
+    // return ()=>{
+    //   socketRef.current.off(ACTIONS.CODE_CHANGE)
+    // };
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.off(ACTIONS.CODE_CHANGE);
+      }
+    };
+
   }, [socketRef.current]);
 
   return <textarea id='realtimeEditor'></textarea>;

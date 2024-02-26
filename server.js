@@ -7,8 +7,12 @@ const ACTIONS = require('./src/Actions');
 const server = http.createServer(app);
 const io = new Server(server);
 
-const userSocketMap = {};
+app.use(express.static('build'));
+app.use((req, res, next)=>{
+  res.sendFile(path.join(__dirname, 'build', 'index.html'))
+})
 
+const userSocketMap = {};
 function getAllConnectedClients(roomId) {
   const room = io.sockets.adapter.rooms.get(roomId);
   if (room) {
@@ -23,6 +27,7 @@ function getAllConnectedClients(roomId) {
 
 io.on('connection', (socket) => {
   console.log('socket connected', socket.id);
+
 
   socket.on(ACTIONS.JOIN, ({ roomId, username }) => {
     userSocketMap[socket.id] = username;
@@ -42,6 +47,11 @@ io.on('connection', (socket) => {
     socket.in(roomId).emit(ACTIONS.CODE_CHANGE, { code });
   });
 
+  socket.on(ACTIONS.SYNC_CODE, ({ socketId, code }) => {
+    io.to(socketId).emit(ACTIONS.CODE_CHANGE, { code });
+  });
+
+
   socket.on('disconnecting', () => {
     const rooms = [...socket.rooms];
     rooms.forEach((roomId) => {
@@ -51,7 +61,8 @@ io.on('connection', (socket) => {
       });
     });
     delete userSocketMap[socket.id];
-    socket.leave();
+     socket.leave();
+  
   });
 });
 

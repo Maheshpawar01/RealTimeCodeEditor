@@ -2,8 +2,6 @@ import React, { useEffect, useState, useRef } from 'react';
 import toast from 'react-hot-toast';
 import Client from '../components/Client';
 import Editor from '../components/Editor'
-// import Client from '../components/Client';
-// import Editor from '../components/Editor';
 import { initSocket } from '../socket';
 import ACTIONS from '../Actions';
 import { useLocation, useNavigate, Navigate, useParams } from 'react-router-dom';
